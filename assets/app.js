@@ -183,12 +183,15 @@
 
   var grid = document.getElementById('galGrid');
   var playSvg = '<div class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>';
-  var GAL_INITIAL = 8;   // câte lucrări apar înainte de „Vezi toate" (mai puțin scroll)
-  var galHidden = [];    // elementele ascunse inițial
+  // prima pagină: grid-ul are data-preview="4" + data-more-href="lucrari.html" (afișează doar 4 + link);
+  // pagina dedicată lucrari.html: fără atribute => afișează toate lucrările.
+  var galPreview = grid ? parseInt(grid.getAttribute('data-preview') || '0', 10) : 0;
+  var galMoreHref = grid ? grid.getAttribute('data-more-href') : null;
+  var SHOWN = (galPreview > 0) ? ITEMS.slice(0, galPreview) : ITEMS;
 
-  ITEMS.forEach(function (it, i) {
+  if (grid) SHOWN.forEach(function (it, i) {
     var el = document.createElement('div');
-    el.className = 'gal-item reveal' + (i >= GAL_INITIAL ? ' is-hidden' : '');
+    el.className = 'gal-item reveal';
     el.setAttribute('data-index', i);
     var media;
     if (it.type === 'video') {
@@ -199,7 +202,6 @@
     el.innerHTML = media +
       '<div class="ov"><div class="t">' + it.label + ' <span class="ac">↗</span></div></div>';
     grid.appendChild(el);
-    if (i >= GAL_INITIAL) galHidden.push(el);
 
     // hover preview for video tiles (lazy-load blob on first hover)
     if (it.type === 'video') {
@@ -214,26 +216,15 @@
     el.addEventListener('click', function () { openLightbox(i); });
   });
 
-  /* ---------- „vezi toate lucrările" — ține pagina scurtă ---------- */
-  if (galHidden.length) {
+  /* ---------- link „vezi toate lucrările" -> pagina dedicată ---------- */
+  if (grid && galMoreHref && ITEMS.length > SHOWN.length) {
     var moreWrap = document.createElement('div');
     moreWrap.className = 'gal-more';
-    var moreBtn = document.createElement('button');
-    moreBtn.type = 'button';
-    moreBtn.className = 'btn btn-ghost btn-lg';
-    var labelMore = 'Vezi toate lucrările (' + ITEMS.length + ')';
-    moreBtn.textContent = labelMore;
-    var galExpanded = false;
-    moreBtn.addEventListener('click', function () {
-      galExpanded = !galExpanded;
-      galHidden.forEach(function (el) {
-        el.classList.toggle('is-hidden', !galExpanded);
-        if (galExpanded) el.classList.add('in'); // afișează imediat, fără să aștepte reveal
-      });
-      moreBtn.textContent = galExpanded ? 'Vezi mai puține' : labelMore;
-      if (!galExpanded) document.getElementById('galerie').scrollIntoView({ behavior: 'smooth' });
-    });
-    moreWrap.appendChild(moreBtn);
+    var moreLink = document.createElement('a');
+    moreLink.className = 'btn btn-ghost btn-lg';
+    moreLink.href = galMoreHref;
+    moreLink.innerHTML = 'Vezi toate lucrările (' + ITEMS.length + ') <span aria-hidden="true">→</span>';
+    moreWrap.appendChild(moreLink);
     grid.parentNode.insertBefore(moreWrap, grid.nextSibling);
   }
 
@@ -243,7 +234,7 @@
   var cur = 0;
 
   function render() {
-    var it = ITEMS[cur];
+    var it = SHOWN[cur];
     if (it.type === 'video') {
       stage.innerHTML = '<video controls autoplay loop playsinline></video>';
       loadVideo(stage.querySelector('video'), it.src);
@@ -263,7 +254,7 @@
     document.body.style.overflow = '';
   }
   function step(d) {
-    cur = (cur + d + ITEMS.length) % ITEMS.length;
+    cur = (cur + d + SHOWN.length) % SHOWN.length;
     render();
   }
   document.getElementById('lbClose').addEventListener('click', closeLightbox);
