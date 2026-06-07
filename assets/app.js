@@ -183,10 +183,12 @@
 
   var grid = document.getElementById('galGrid');
   var playSvg = '<div class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>';
+  var GAL_INITIAL = 8;   // câte lucrări apar înainte de „Vezi toate" (mai puțin scroll)
+  var galHidden = [];    // elementele ascunse inițial
 
   ITEMS.forEach(function (it, i) {
     var el = document.createElement('div');
-    el.className = 'gal-item reveal';
+    el.className = 'gal-item reveal' + (i >= GAL_INITIAL ? ' is-hidden' : '');
     el.setAttribute('data-index', i);
     var media;
     if (it.type === 'video') {
@@ -197,6 +199,7 @@
     el.innerHTML = media +
       '<div class="ov"><div class="t">' + it.label + ' <span class="ac">↗</span></div></div>';
     grid.appendChild(el);
+    if (i >= GAL_INITIAL) galHidden.push(el);
 
     // hover preview for video tiles (lazy-load blob on first hover)
     if (it.type === 'video') {
@@ -210,6 +213,29 @@
     }
     el.addEventListener('click', function () { openLightbox(i); });
   });
+
+  /* ---------- „vezi toate lucrările" — ține pagina scurtă ---------- */
+  if (galHidden.length) {
+    var moreWrap = document.createElement('div');
+    moreWrap.className = 'gal-more';
+    var moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'btn btn-ghost btn-lg';
+    var labelMore = 'Vezi toate lucrările (' + ITEMS.length + ')';
+    moreBtn.textContent = labelMore;
+    var galExpanded = false;
+    moreBtn.addEventListener('click', function () {
+      galExpanded = !galExpanded;
+      galHidden.forEach(function (el) {
+        el.classList.toggle('is-hidden', !galExpanded);
+        if (galExpanded) el.classList.add('in'); // afișează imediat, fără să aștepte reveal
+      });
+      moreBtn.textContent = galExpanded ? 'Vezi mai puține' : labelMore;
+      if (!galExpanded) document.getElementById('galerie').scrollIntoView({ behavior: 'smooth' });
+    });
+    moreWrap.appendChild(moreBtn);
+    grid.parentNode.insertBefore(moreWrap, grid.nextSibling);
+  }
 
   /* ---------- lightbox ---------- */
   var lb = document.getElementById('lightbox');
